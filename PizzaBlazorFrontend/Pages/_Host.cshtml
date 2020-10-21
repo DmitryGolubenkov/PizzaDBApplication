@@ -1,0 +1,47 @@
+﻿@page "/"
+@namespace PizzaBlazorFrontend.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@using System.Globalization
+@using Microsoft.AspNetCore.Localization
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>База данных PizzaDB</title>
+    <base href="~/" />
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="_content/DevExpress.Blazor/dx-blazor.css" rel="stylesheet" />
+</head>
+<body>
+@{
+    this.HttpContext.Response.Cookies.Append(
+        CookieRequestCultureProvider.DefaultCookieName,
+        CookieRequestCultureProvider.MakeCookieValue(
+            new RequestCulture(
+                new CultureInfo("ru-RU")
+                )));
+}
+<app>
+    <component type="typeof(App)" render-mode="ServerPrerendered"/>
+</app>
+
+<div id="blazor-error-ui">
+    <environment include="Staging,Production">
+        Произошла ошибка. Возможно, для продолжения работы понадобится перезагрузить страницу.
+    </environment>
+    <environment include="Development">
+        Произошло необработанное исключение. Проверьте средства разработки в браузере для дополнительных подробностей.
+    </environment>
+    <a href="" class="reload">Обновить страницу</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+<script src="_framework/blazor.server.js"></script>
+</body>
+</html>
