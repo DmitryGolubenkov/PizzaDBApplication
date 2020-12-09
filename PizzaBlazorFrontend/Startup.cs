@@ -10,8 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MySql.Data.MySqlClient;
-using PizzaBlazorFrontend.Data;
 using PizzaDataLibrary.BusinessLogic;
+using PizzaDataLibrary.BusinessLogic.EmployeeDataLogic;
 using PizzaDataLibrary.DataAccess;
 
 namespace PizzaBlazorFrontend
@@ -32,11 +32,14 @@ namespace PizzaBlazorFrontend
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddTransient<ISqlDataAccess, SqlDataAccess>();
+
             services.AddTransient<IMenuProductData, MenuProductData>();
             services.AddTransient<IClientData, ClientData>();
-            services.AddTransient<MySqlConnection>(_ =>
-                new MySqlConnection(Configuration["ConnectionStrings:PizzaDB"]));
-            //services.AddSingleton<WeatherForecastService>();
+            services.AddTransient<IEmployeeData, EmployeeData>();
+            services.AddTransient<IOrderData, OrderData>();
+            services.AddTransient<IPartnerProductData, PartnerProductData>();
+            services.AddTransient<IProductCompositionsData, ProductCompositionData>();
+            services.AddTransient<IProductRecipeData, ProductRecipeData>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

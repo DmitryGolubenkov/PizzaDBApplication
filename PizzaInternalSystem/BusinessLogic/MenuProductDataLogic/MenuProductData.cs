@@ -19,10 +19,11 @@ namespace PizzaDataLibrary.BusinessLogic
             return _db.LoadData<MenuProductModel, dynamic>(sql, new { });
         }
 
-        public Task AddProduct(MenuProductModel product)
+        public Task<int> AddProduct(MenuProductModel product)
         {
-            string sql = "insert into products_table (ProductName, ProductPrice, ProductDescription, ProductMarks) values (@ProductName, @ProductPrice, @ProductDescription, @ProductMarks)";
-            return _db.ExecuteSQLQuery(sql, product);
+            string sql = "insert into products_table (ProductName, ProductPrice, ProductDescription, ProductMarks) values (@ProductName, @ProductPrice, @ProductDescription, @ProductMarks); select scope_identity()";
+
+            return _db.InsertDataIntoDatabase(sql, product);
         }
 
         public Task UpdateProduct(MenuProductModel product)

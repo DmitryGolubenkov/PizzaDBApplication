@@ -1,0 +1,115 @@
+﻿@page "/Clients"
+@using PizzaDataLibrary.BusinessLogic
+@using PizzaDataLibrary.Models
+
+@inject IClientData _db
+
+<h3>Таблица клиентов</h3>
+<p>На данной странице отображена таблица clients_table из БД PizzaDB</p>
+
+
+@if (clients == null)
+{
+    <p><em>Идёт загрузка данных..</em></p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+        <DxDataGrid Data="@clients"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdating="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(ClientModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(ClientModel.Name)" Caption="Имя"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(ClientModel.Address)" Caption="Адрес"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(ClientModel.PhoneNumber)" Caption="Номер телефона"></DxDataGridColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
+    }
+    else
+    {
+
+    }
+}
+@code {
+    private List<ClientModel> clients;
+    DxDataGrid<ClientModel> _gridRef;
+    private bool _isSearching = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        clients = await _db.GetClientsListTask();
+    }
+
+    async Task OnRowRemoving(ClientModel dataItem)
+    {
+
+        //Удаляем из БД
+        await _db.RemoveClient(dataItem);
+        //Удаляем из листа
+        clients.Remove(dataItem);
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    void OnRowUpdating(ClientModel dataItem, IDictionary<string, object> newValue)
+    {
+        //Заполняем объект для отправки в БД
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "Name":
+                    dataItem.Name = newValue["Name"].ToString();
+                    break;
+                case "Address":
+                    dataItem.Address = newValue["Address"].ToString();
+                    break;
+                case "PhoneNumber":
+                    dataItem.PhoneNumber = newValue["PhoneNumber"].ToString();
+                    break;
+
+            }
+        }
+        //Отправляем его в БД
+        _db.UpdateClient(dataItem);
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newClient = new ClientModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "Name":
+                    newClient.Name = newValue["Name"].ToString();
+                    break;
+                case "Address":
+                    newClient.Address = newValue["Address"].ToString();
+                    break;
+                case "PhoneNumber":
+                    newClient.PhoneNumber = newValue["PhoneNumber"].ToString();
+                    break;
+
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.AddClient(newClient);
+        newClient.ClientId = id;
+        //Добавляем его в лист
+        clients.Add(newClient);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+
+    public async void Search()//здесь будут параметры поиска
+    {
+
+    }
+}

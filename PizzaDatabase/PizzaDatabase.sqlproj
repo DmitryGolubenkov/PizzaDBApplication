@@ -61,6 +61,11 @@
   <ItemGroup>
     <Build Include="products_table.sql" />
     <Build Include="product_compositions.sql" />
+    <Build Include="table_clients.sql" />
+    <Build Include="orders.sql" />
+    <Build Include="partner_products.sql" />
+    <Build Include="product_recipes.sql" />
+    <Build Include="employees_table.sql" />
   </ItemGroup>
   <ItemGroup>
     <RefactorLog Include="PizzaDatabase.refactorlog" />

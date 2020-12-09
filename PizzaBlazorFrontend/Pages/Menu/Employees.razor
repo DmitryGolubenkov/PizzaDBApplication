@@ -1,0 +1,122 @@
+﻿@page "/Employees"
+
+@using PizzaDataLibrary.BusinessLogic.EmployeeDataLogic
+@using PizzaDataLibrary.Models
+
+@inject IEmployeeData _db
+
+<h3>Таблица сотрудников</h3>
+<p>На данной странице отображена таблица employees_table из БД PizzaDB</p>
+
+
+@if (employees == null)
+{
+    <p><em>Идёт загрузка данных..</em></p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+        <DxDataGrid Data="@employees"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdating="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(EmployeeModel.EmployeeId)" Caption="ID сотрудника" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(EmployeeModel.FirstName)" Caption="Имя"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(EmployeeModel.LastName)" Caption="Фамилия"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(EmployeeModel.MiddleName)" Caption="Отчество"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(EmployeeModel.EmployeePosition)" Caption="Должность"></DxDataGridColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
+    }
+    else
+    {
+
+    }
+}
+@code {
+    private List<EmployeeModel> employees;
+    DxDataGrid<EmployeeModel> _gridRef;
+    private bool _isSearching = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        employees = await _db.GetEmployeesListTask();
+    }
+
+    async Task OnRowRemoving(EmployeeModel dataItem)
+    {
+
+        //Удаляем из БД
+        await _db.Remove(dataItem);
+        //Удаляем из листа
+        employees.Remove(dataItem);
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    void OnRowUpdating(EmployeeModel dataItem, IDictionary<string, object> newValue)
+    {
+        //Заполняем объект для отправки в БД
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "EmployeePosition":
+                    dataItem.EmployeePosition = newValue["EmployeePosition"].ToString();
+                    break;
+                case "FirstName":
+                    dataItem.FirstName = newValue["FirstName"].ToString();
+                    break;
+                case "LastName":
+                    dataItem.LastName = newValue["LastName"].ToString();
+                    break;
+                case "MiddleName":
+                    dataItem.MiddleName = newValue["MiddleName"].ToString();
+                    break;
+            }
+        }
+        //Отправляем его в БД
+        _db.Update(dataItem);
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newEmployee = new EmployeeModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "EmployeePosition":
+                    newEmployee.EmployeePosition = newValue["EmployeePosition"].ToString();
+                    break;
+                case "FirstName":
+                    newEmployee.FirstName = newValue["FirstName"].ToString();
+                    break;
+                case "LastName":
+                    newEmployee.LastName = newValue["LastName"].ToString();
+                    break;
+                case "MiddleName":
+                    newEmployee.MiddleName = newValue["MiddleName"].ToString();
+                    break;
+
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.Add(newEmployee);
+        newEmployee.EmployeeId = id;
+        //Добавляем его в лист
+        employees.Add(newEmployee);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+
+    public async void Search()//здесь будут параметры поиска
+    {
+
+    }
+}

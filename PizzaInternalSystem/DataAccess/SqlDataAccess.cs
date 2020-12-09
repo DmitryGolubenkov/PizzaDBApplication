@@ -8,7 +8,6 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using Microsoft.Extensions.Configuration;
-using MySqlConnector;
 namespace PizzaDataLibrary.DataAccess
 {
     public class SqlDataAccess : ISqlDataAccess
@@ -50,6 +49,19 @@ namespace PizzaDataLibrary.DataAccess
             {
                 await connection.ExecuteAsync(sql, data);
             }
+        }
+
+        public async Task<int> InsertDataIntoDatabase<T>(string sql, T data)
+        {
+            using (IDbConnection connection = new SqlConnection(GetConnectionString()))
+            {
+                return await connection.QuerySingleAsync<int>(sql, data);
+            }
+        }
+
+        public Task<List<T>> SearchData<T, U>(string sql, U parameters)
+        {
+            throw new NotImplementedException();
         }
     }
 }

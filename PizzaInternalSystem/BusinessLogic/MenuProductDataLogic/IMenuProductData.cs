@@ -7,7 +7,7 @@ namespace PizzaDataLibrary.BusinessLogic
     public interface IMenuProductData
     {
         Task<List<MenuProductModel>> GetProductsList();
-        Task AddProduct(MenuProductModel product);
+        Task<int> AddProduct(MenuProductModel product);
         public Task UpdateProduct(MenuProductModel product);
         Task RemoveProduct(MenuProductModel product);
     }

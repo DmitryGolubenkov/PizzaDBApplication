@@ -1,7 +1,6 @@
 ﻿@page "/Menu"
 @using PizzaDataLibrary.BusinessLogic
 @using PizzaDataLibrary.Models
-@using Microsoft.Extensions.Logging
 
 @inject IMenuProductData _db
 
@@ -14,45 +13,14 @@
 }
 else
 {
-    <!--
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Id продукта</th>
-                <th>Название продукта</th>
-                <th>Цена</th>
-                <th>Описание</th>
-                <th>Пометки</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(var product in products)
-            {
-                <tr>
-                    <td>@product.ProductId</td>
-                    <td>@product.ProductName</td>
-                    <td>@product.ProductPrice</td>
-                    <td>@product.ProductDescription</td>
-                    <td>@product.ProductMarks</td>
-                    <td>
-
-
-                    </td>
-                </tr>
-            }
-        </tbody>
-
-
-    </table>
-    -->
-    
-<DxDataGrid Data="@products" 
-            RowInserting="@OnRowInserting" 
+    @if (!_isSearching)
+    {
+<DxDataGrid Data="@products"
+            RowInsertingAsync="@OnRowInserting"
             RowUpdating="@OnRowUpdating"
-            RowRemoving="@OnRowRemoving"
+            RowRemovingAsync="@OnRowRemoving"
             EditMode="DataGridEditMode.PopupEditForm"
-            ShowFilterRow=true>
+            @ref="@_gridRef">
     <DxDataGridColumn Field="@nameof(MenuProductModel.ProductId)" Caption="Id продукта" EditorVisible=false></DxDataGridColumn>
     <DxDataGridColumn Field="@nameof(MenuProductModel.ProductName)" Caption="Название продукта"></DxDataGridColumn>
     <DxDataGridSpinEditColumn Field="@nameof(MenuProductModel.ProductPrice)" Caption="Цена"></DxDataGridSpinEditColumn>
@@ -60,24 +28,36 @@ else
     <DxDataGridColumn Field="@nameof(MenuProductModel.ProductMarks)" Caption="Пометки"></DxDataGridColumn>
     <DxDataGridCommandColumn></DxDataGridCommandColumn>
 </DxDataGrid>
-
+    }
+    else
+    {
+        
+    }
 }
 @code {
     private List<MenuProductModel> products;
+    DxDataGrid<MenuProductModel> _gridRef;
+    private bool _isSearching = false;
 
     protected override async Task OnInitializedAsync()
     {
         products = await _db.GetProductsList();
-
     }
 
-    void OnRowRemoving(MenuProductModel dataItem)
+    async Task OnRowRemoving(MenuProductModel dataItem)
     {
-        _db.RemoveProduct(dataItem);
+
+    //Удаляем из БД 
+        await _db.RemoveProduct(dataItem);
+    //Удаляем из листа
+        products.Remove(dataItem);
+    //Обновляем таблицу
+        await _gridRef.Refresh();
     }
 
     void OnRowUpdating(MenuProductModel dataItem, IDictionary<string, object> newValue)
     {
+        //Заполняем объект для отправки в БД
         foreach (var (key, val) in newValue)
         {
             switch (key)
@@ -97,12 +77,13 @@ else
 
             }
         }
-
+        //Отправляем его в БД
         _db.UpdateProduct(dataItem);
     }
 
-    void OnRowInserting(IDictionary<string, object> newValue)
+    async Task OnRowInserting(IDictionary<string, object> newValue)
     {
+        //Создаём новый объект и заполняем его
         var newProduct = new MenuProductModel();
         foreach (var (key, val) in newValue)
         {
@@ -123,7 +104,18 @@ else
 
             }
         }
+        
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.AddProduct(newProduct);
+        newProduct.ProductId = id;
+    //Добавляем его в лист
+        products.Add(newProduct);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
 
-        _db.AddProduct(newProduct);
+    public async void Search()//здесь будут параметры поиска
+    {
+        
     }
 }

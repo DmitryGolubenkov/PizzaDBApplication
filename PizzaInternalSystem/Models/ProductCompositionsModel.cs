@@ -1,6 +1,6 @@
 ﻿namespace PizzaDataLibrary.Models
 {
-    class ProductCompositionsModel
+    public class ProductCompositionsModel
     {
         public int CompositionId { get; set; }
         public int ProductId { get; set; }
