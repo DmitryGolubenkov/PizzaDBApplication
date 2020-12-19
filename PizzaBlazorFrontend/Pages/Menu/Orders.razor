@@ -1,0 +1,276 @@
+﻿@page "/Orders"
+@using PizzaDataLibrary.BusinessLogic
+@using PizzaDataLibrary.BusinessLogic.EmployeeDataLogic
+@using PizzaDataLibrary.Models
+@using System.Diagnostics
+@using System.Text.RegularExpressions
+@using DevExpress.Blazor.Scheduler.Internal
+@using Models;
+
+@inject IOrderData _db
+@inject IClientData _ClientDataDB;
+@inject IEmployeeData _EmployeeDataDB;
+
+<h3>Таблица заказов</h3>
+<p>На данной странице отображена таблица orders из БД PizzaDB</p>
+
+@if (orders == null)
+{
+    <p><em>Идёт загрузка данных..</em></p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+<DxDataGrid Data="@orders"
+            RowInsertingAsync="@OnRowInserting"
+            RowUpdatingAsync="@OnRowUpdating"
+            RowRemovingAsync="@OnRowRemoving"
+            EditMode="DataGridEditMode.PopupEditForm"
+            InitNewRow="@OnInitNewRow"
+            ShowFilterRow="true"
+            @ref="@_gridRef">
+    <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderId)" Caption="ID заказа" EditorVisible=false></DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(OrderDisplayModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
+    <DxDataGridComboBoxColumn Data="@clients.Select(o => o.Name).ToList()" Field="@nameof(OrderDisplayModel.ClientName)" Caption="Имя клиента"></DxDataGridComboBoxColumn>
+
+    <DxDataGridSpinEditColumn Field="@nameof(OrderDisplayModel.Sum)" Caption="Сумма"></DxDataGridSpinEditColumn>
+    <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderTime)" Caption="Время заказа"></DxDataGridColumn>
+    <DxDataGridComboBoxColumn Data="@orderStatuses" Field="@nameof(OrderDisplayModel.StatusName)" Caption="Статус заказа"></DxDataGridComboBoxColumn>
+    
+    <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderContents)" Caption="Состав заказа"></DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(OrderDisplayModel.EmployeeId)" Caption="ID сотрудника" EditorVisible=false></DxDataGridColumn>
+    <DxDataGridComboBoxColumn Data="@avaliableEmployees" Field="@nameof(OrderDisplayModel.EmployeeName)" Caption="Сотрудник"></DxDataGridComboBoxColumn>
+    <DxDataGridCommandColumn></DxDataGridCommandColumn>
+</DxDataGrid>
+    }
+    else
+    {
+
+    }
+}
+@code {
+    private List<OrderDisplayModel> orders;
+    private List<ClientModel> clients;
+    private List<EmployeeModel> employees;
+    private List<string> avaliableEmployees;
+    DxDataGrid<OrderDisplayModel> _gridRef;
+    private bool _isSearching = false;
+
+    private string[] orderStatuses = {"Поступил", "В процессе", "Доставляется", "Завершен"};
+    protected override async Task OnInitializedAsync()
+    {
+        var databaseOrders = await _db.GetOrdersListTask();
+        clients = await _ClientDataDB.GetClientsListTask();
+        employees = await _EmployeeDataDB.GetEmployeesListTask();
+        avaliableEmployees = new List<string>();
+        var orderDisplayModels = new List<OrderDisplayModel>();
+        foreach (var orderModel in databaseOrders)
+        {
+            OrderDisplayModel model = new OrderDisplayModel();
+
+            model.ClientId = orderModel.ClientId;
+            model.ClientName = clients.Find(o => o.ClientId == orderModel.ClientId).Name;
+            model.OrderContents = orderModel.OrderContents;
+            model.OrderId = orderModel.OrderId;
+            model.OrderTime = orderModel.OrderTime;
+            model.Sum = orderModel.Sum;
+            model.EmployeeId = orderModel.EmployeeId;
+            model.StatusId = orderModel.StatusId;
+            model.StatusName = orderStatuses[orderModel.StatusId];
+            var employee = employees.Find(o => o.EmployeeId == orderModel.EmployeeId);
+            avaliableEmployees.Add($@"{employee.LastName} {employee.FirstName} {employee.MiddleName}");
+            model.EmployeeName = $@"{employee.LastName} {employee.FirstName} {employee.MiddleName}";
+
+            orderDisplayModels.Add(model);
+        }
+        orders = orderDisplayModels;
+    }
+
+    async Task OnRowRemoving(OrderDisplayModel dataItem)
+    {
+        OrderModel modelToDelete= new OrderModel();
+        modelToDelete.OrderId = dataItem.OrderId;
+        //Удаляем из БД
+        await _db.RemoveOrder(modelToDelete);
+        //Удаляем из листа
+        orders.Remove(dataItem);
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowUpdating(OrderDisplayModel dataItem, IDictionary<string, object> newValue)
+    {
+        OrderModel model = new OrderModel();
+        model.OrderId = dataItem.OrderId;
+        model.ClientId = dataItem.ClientId;
+        model.OrderContents = dataItem.OrderContents;
+        model.OrderTime = dataItem.OrderTime;
+        model.StatusId = dataItem.StatusId;
+        model.Sum = dataItem.Sum;
+        model.EmployeeId = dataItem.EmployeeId;
+        //Заполняем объект для отправки в БД
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ClientName":
+                    int id = clients.Find(o => o.Name == newValue["ClientName"].ToString()).ClientId;
+                    dataItem.ClientId = id;
+                    model.ClientId = id;
+                    dataItem.ClientName = newValue["ClientName"].ToString();
+                    break;
+                case "EmployeeName":
+                    string fullName = newValue["EmployeeName"].ToString();
+                    string lastName = fullName.Split(' ')[0];
+                    string firstName = fullName.Split(' ')[1];
+                    string middleName = fullName.Split(' ')[2];
+                    model.EmployeeId = employees.Find(o => (o.FirstName == firstName) && (o.LastName == lastName) && (o.MiddleName == middleName)).EmployeeId;
+                    dataItem.EmployeeName = fullName;
+                    break;
+                case "Sum":
+                    try
+                    {
+                        model.Sum = Convert.ToInt32(newValue["Sum"]);
+                        dataItem.Sum = Convert.ToInt32(newValue["Sum"]);
+
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine("Error when converting");
+                        throw;
+                    }
+                    break;
+                case "OrderTime":
+                    model.OrderTime = (DateTime)newValue["OrderTime"];
+                    dataItem.OrderTime = (DateTime) newValue["OrderTime"];
+                    break;
+                case "StatusName":
+                    model.StatusId = orderStatuses.FindIndex(o => o == newValue["StatusName"].ToString());
+                    dataItem.StatusName = newValue["StatusName"].ToString();
+                    break;
+                case "OrderContents":
+                    model.OrderContents = newValue["OrderContents"].ToString();
+                    dataItem.OrderContents = newValue["OrderContents"].ToString();
+                    break;
+            }
+        }
+        //Отправляем его в БД
+        await _db.UpdateOrder(model);
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newOrder = new OrderModel();
+        var newDisplayOrder = new OrderDisplayModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ClientName":
+                    int id1 = clients.Find(o => o.Name == newValue["ClientName"].ToString()).ClientId;
+                    newOrder.ClientId = id1;
+                    newDisplayOrder.ClientId = id1;
+                    newDisplayOrder.ClientName = newValue["ClientName"].ToString();
+                    break;
+                case "EmployeeName":
+                    string fullName = newValue["EmployeeName"].ToString();
+                    fullName = Regex.Replace(fullName, " {2,}", " ");
+                    string lastName = fullName.Split(' ')[0];
+                    string firstName = fullName.Split(' ')[1];
+                    string middleName = fullName.Split(' ')[2];
+                    newOrder.EmployeeId = employees.Find(
+                        o => Trim(o.FirstName) == Trim(firstName) 
+                             && 
+                             Trim(o.LastName) == Trim(lastName) 
+                             && 
+                             Trim(o.MiddleName) == Trim(middleName)).EmployeeId;
+                    newDisplayOrder.EmployeeName = fullName;
+                    break;
+                case "Sum":
+                    try
+                    {
+                        newOrder.Sum = Convert.ToInt32(newValue["Sum"]);
+                        newDisplayOrder.Sum = Convert.ToInt32(newValue["Sum"]);
+
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine("Error when converting");
+                        throw;
+                    }
+                    break;
+                case "OrderTime":
+                    newOrder.OrderTime = (DateTime)newValue["OrderTime"];
+                    newDisplayOrder.OrderTime = (DateTime)newValue["OrderTime"];
+                    break;
+                case "StatusName":
+                    newOrder.StatusId = orderStatuses.FindIndex(o => o == newValue["StatusName"].ToString());
+                    newDisplayOrder.StatusName = newValue["StatusName"].ToString();
+                    break;
+                case "OrderContents":
+                    newOrder.OrderContents = newValue["OrderContents"].ToString();
+                    newDisplayOrder.OrderContents = newValue["OrderContents"].ToString();
+                    break;
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.AddOrder(newOrder);
+        newDisplayOrder.OrderId = id;
+        //Добавляем его в лист
+        orders.Add(newDisplayOrder);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+
+    Task OnInitNewRow(Dictionary<string, object> values)
+    {
+        values.Add("OrderTime", DateTime.Now);
+        return Task.CompletedTask;
+    }
+
+    public async void Search()//здесь будут параметры поиска
+    {
+
+    }
+
+
+
+
+
+
+
+
+    public static string Trim(string str) {
+
+        var len = str.Length;
+        var src = str.ToCharArray();
+        int dstIdx = 0;
+
+        for (int i = 0; i < len; i++) {
+            var ch = src[i];
+
+            switch (ch) {
+
+                case '\u0020': case '\u00A0': case '\u1680': case '\u2000': case '\u2001':
+
+                case '\u2002': case '\u2003': case '\u2004': case '\u2005': case '\u2006':
+
+                case '\u2007': case '\u2008': case '\u2009': case '\u200A': case '\u202F':
+
+                case '\u205F': case '\u3000': case '\u2028': case '\u2029': case '\u0009':
+
+                case '\u000A': case '\u000B': case '\u000C': case '\u000D': case '\u0085':
+                    continue;
+
+                default:
+                    src[dstIdx++] = ch;
+                    break;
+            }
+        }
+        return new string(src, 0, dstIdx);
+    }
+}

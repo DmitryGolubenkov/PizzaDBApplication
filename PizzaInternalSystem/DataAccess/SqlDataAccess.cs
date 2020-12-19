@@ -8,13 +8,13 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using Microsoft.Extensions.Configuration;
+
 namespace PizzaDataLibrary.DataAccess
 {
     public class SqlDataAccess : ISqlDataAccess
     {
-
         private readonly IConfiguration _config;
- 
+
         public SqlDataAccess(IConfiguration config)
         {
             _config = config;
@@ -47,7 +47,15 @@ namespace PizzaDataLibrary.DataAccess
         {
             using (IDbConnection connection = new SqlConnection(GetConnectionString()))
             {
-                await connection.ExecuteAsync(sql, data);
+                try
+                {
+                    await connection.ExecuteAsync(sql, data);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    throw;
+                }
             }
         }
 
@@ -55,7 +63,15 @@ namespace PizzaDataLibrary.DataAccess
         {
             using (IDbConnection connection = new SqlConnection(GetConnectionString()))
             {
-                return await connection.QuerySingleAsync<int>(sql, data);
+                try
+                {
+                    return await connection.QuerySingleAsync<int>(sql, data);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    throw;
+                }
             }
         }
 

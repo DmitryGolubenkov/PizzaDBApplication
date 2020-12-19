@@ -1,0 +1,142 @@
+﻿@page "/Compositions"
+@using PizzaDataLibrary.BusinessLogic
+@using PizzaDataLibrary.Models
+@using Models
+
+@inject IProductCompositionsData _db
+@inject IMenuProductData _dbMenu
+
+<h3>Таблица составов продуктов</h3>
+<p>На данной странице отображена таблица product_compositions из БД PizzaDB</p>
+
+@if (compositions == null)
+{
+    <p><em>Идёт загрузка данных..</em></p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+        <DxDataGrid Data="@compositions"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdatingAsync="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    ShowFilterRow="true"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(CompositionModel.CompositionId)" Caption="ID состава" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(CompositionModel.ProductId)" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="menuProductModels.Select(o => o.ProductName)" Field="@nameof(CompositionModel.ProductName)" Caption="Название"></DxDataGridComboBoxColumn>
+            <DxDataGridColumn Field="@nameof(CompositionModel.ProductComposition)" Caption="Состав"></DxDataGridColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
+    }
+    else
+    {
+
+    }
+}
+@code {
+    private List<CompositionModel> compositions;
+    private List<MenuProductModel> menuProductModels;
+    DxDataGrid<CompositionModel> _gridRef;
+    private bool _isSearching = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var displayCompositions = new List<CompositionModel>();
+        var databaseCompositions = await _db.GetCompositionsListTask();
+        menuProductModels = await _dbMenu.GetProductsList();
+
+        foreach (var databaseModel in databaseCompositions)
+        {
+            CompositionModel compositionModel = new CompositionModel();
+            compositionModel.CompositionId = databaseModel.CompositionId;
+            compositionModel.ProductId = databaseModel.ProductId;
+            compositionModel.ProductComposition = databaseModel.ProductComposition;
+            compositionModel.ProductName = menuProductModels.Find(o => o.ProductId == databaseModel.ProductId).ProductName;
+            displayCompositions.Add(compositionModel);
+        }
+        compositions = displayCompositions;
+
+    }
+
+    async Task OnRowRemoving(CompositionModel dataItem)
+    {
+
+        //Удаляем из БД
+        ProductCompositionsModel model = new ProductCompositionsModel();
+        model.CompositionId = dataItem.CompositionId;
+
+        await _db.Remove(model);
+        //Удаляем из листа
+        compositions.Remove(dataItem);
+
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowUpdating(CompositionModel dataItem, IDictionary<string, object> newValue)
+    {
+        //Заполняем объект для отправки в БД
+        ProductCompositionsModel model = new ProductCompositionsModel();
+        model.CompositionId = dataItem.CompositionId;
+        model.ProductComposition = dataItem.ProductComposition;
+        model.ProductId = dataItem.ProductId;
+
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductComposition":
+                    model.ProductComposition = newValue["ProductComposition"].ToString();
+
+                    compositions.Find(o => o.ProductId == dataItem.ProductId).ProductComposition = newValue["ProductComposition"].ToString();
+                    break;
+                case "ProductName":
+                    model.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+
+                    var compositionId = compositions.FindIndex(o => o.ProductId == dataItem.ProductId);
+
+                    compositions[compositionId].ProductId = model.ProductId;
+                    compositions[compositionId].ProductName = menuProductModels.Find(o => o.ProductId == model.ProductId).ProductName;
+                    break;
+            }
+        }
+        //Отправляем его в БД
+        _db.Update(model);
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newComposition = new ProductCompositionsModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductComposition":
+                    newComposition.ProductComposition = newValue["ProductComposition"].ToString();
+                    break;
+                case "ProductName":
+                    newComposition.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+                    break;
+
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.Add(newComposition);
+        newComposition.CompositionId = id;
+        //Добавляем его в лист
+        CompositionModel model = new CompositionModel();
+        model.CompositionId = newComposition.CompositionId;
+        model.ProductComposition = newComposition.ProductComposition;
+        model.ProductId = newComposition.ProductId;
+        model.ProductName = menuProductModels.Find(o => o.ProductId == model.ProductId).ProductName;
+        compositions.Add(model);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+}

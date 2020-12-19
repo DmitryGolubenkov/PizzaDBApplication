@@ -23,7 +23,7 @@ namespace PizzaDataLibrary.BusinessLogic
         public Task<int> Add(PartnerProductModel model)
         {
             string sql = @"insert into partner_products (ProductId, ProductPartnerPrice, ProductCount) 
-values (@ProductId, @ProductPartnerPrice, @ProductPartnerPrice, @ProductCount); select scope_identity()";
+values (@ProductId, @ProductPartnerPrice, @ProductCount); select scope_identity()";
 
             return _db.InsertDataIntoDatabase(sql, model);
         }
@@ -31,7 +31,7 @@ values (@ProductId, @ProductPartnerPrice, @ProductPartnerPrice, @ProductCount); 
         public Task Update(PartnerProductModel model)
         {
             string sql =
-                @"UPDATE partner_products SET ProductId=@ProductId, ProductPartnerPrice=@ProductPartnerPrice, ProductPartnerPrice=@ProductPartnerPrice, ProductCount=@ProductCount WHERE PartnerProductId=@PartnerProductId";
+                @"UPDATE partner_products SET ProductId=@ProductId, ProductPartnerPrice=@ProductPartnerPrice,  ProductCount=@ProductCount WHERE PartnerProductId=@PartnerProductId";
 
             return _db.ExecuteSQLQuery(sql, model);
         }
@@ -39,7 +39,7 @@ values (@ProductId, @ProductPartnerPrice, @ProductPartnerPrice, @ProductCount); 
         public Task Remove(PartnerProductModel model)
         {
             string sql =
-                @"DELETE FROM partner_products WHERE PartnerProductId=@PartnerProductId, ";
+                @"DELETE FROM partner_products WHERE PartnerProductId=@PartnerProductId";
 
             return _db.ExecuteSQLQuery(sql, model);
         }

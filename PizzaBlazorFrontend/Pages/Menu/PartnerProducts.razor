@@ -1,0 +1,117 @@
+﻿@page "/PartnerProducts"
+@using PizzaDataLibrary.BusinessLogic
+@using PizzaDataLibrary.Models
+
+@inject IPartnerProductData _db
+@inject IMenuProductData _dbMenu
+
+<h3>Таблица продуктов партнеров</h3>
+<p>На данной странице отображена таблица partner_products из БД PizzaDB</p>
+
+@if (products == null)
+{
+    <p><em>Идёт загрузка данных..</em></p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+        <DxDataGrid Data="@products"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdating="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    ShowFilterRow="true"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(PartnerProductModel.PartnerProductId)" Caption="ID продукта партнера" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="menuProductModels.Select(o =>o.ProductName)" Field="@nameof(PartnerProductModel.ProductId)" Caption="ID продукта в меню"></DxDataGridComboBoxColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductModel.ProductPartnerPrice)" Caption="Цена закупки"></DxDataGridSpinEditColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductModel.ProductCount)" Caption="Количество в наличии"></DxDataGridSpinEditColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
+    }
+    else
+    {
+
+    }
+}
+@code {
+    private List<PartnerProductModel> products;
+    private List<MenuProductModel> menuProductModels;
+    DxDataGrid<PartnerProductModel> _gridRef;
+    private bool _isSearching = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await _db.GetPartnerProductListTask();
+        menuProductModels = await _dbMenu.GetProductsList();
+    }
+
+    async Task OnRowRemoving(PartnerProductModel dataItem)
+    {
+
+        //Удаляем из БД
+        await _db.Remove(dataItem);
+        //Удаляем из листа
+        products.Remove(dataItem);
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    void OnRowUpdating(PartnerProductModel dataItem, IDictionary<string, object> newValue)
+    {
+        //Заполняем объект для отправки в БД
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductId":
+                    dataItem.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductId"].ToString()).ProductId;
+                    break;
+                case "ProductCount":
+                    dataItem.ProductCount = (int)newValue["ProductCount"];
+                    break;
+                case "ProductPartnerPrice":
+                    dataItem.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
+                    break;
+            }
+        }
+        //Отправляем его в БД
+        _db.Update(dataItem);
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newPartnerProduct = new PartnerProductModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductId":
+                    newPartnerProduct.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductId"].ToString()).ProductId;
+                    break;
+                case "ProductCount":
+                    newPartnerProduct.ProductCount = (int)newValue["ProductCount"];
+                    break;
+                case "ProductPartnerPrice":
+                    newPartnerProduct.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
+                    break;
+
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.Add(newPartnerProduct);
+        newPartnerProduct.PartnerProductId = id;
+        //Добавляем его в лист
+        products.Add(newPartnerProduct);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+
+    public async void Search()//здесь будут параметры поиска
+    {
+
+    }
+}

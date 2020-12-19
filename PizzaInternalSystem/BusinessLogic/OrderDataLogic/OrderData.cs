@@ -32,7 +32,7 @@ values (@ClientId, @Sum, @OrderTime, @StatusId, @OrderContents, @EmployeeId); se
         public Task UpdateOrder(OrderModel model)
         {
             string sql =
-                @"UPDATE orders SET (ClientId=@ClientId, Sum=@Sum, OrderTime=@OrderTime, StatusId=@StatusId, OrderContents=@OrderContents) WHERE OrderId=@OrderId";
+                @"UPDATE orders SET ClientId=@ClientId, Sum=@Sum, OrderTime=@OrderTime, StatusId=@StatusId, OrderContents=@OrderContents, EmployeeId=@EmployeeId WHERE OrderId=@OrderId";
 
             return _db.ExecuteSQLQuery(sql, model);
         }

@@ -20,6 +20,7 @@ else
             RowUpdating="@OnRowUpdating"
             RowRemovingAsync="@OnRowRemoving"
             EditMode="DataGridEditMode.PopupEditForm"
+            ShowFilterRow="true"
             @ref="@_gridRef">
     <DxDataGridColumn Field="@nameof(MenuProductModel.ProductId)" Caption="Id продукта" EditorVisible=false></DxDataGridColumn>
     <DxDataGridColumn Field="@nameof(MenuProductModel.ProductName)" Caption="Название продукта"></DxDataGridColumn>

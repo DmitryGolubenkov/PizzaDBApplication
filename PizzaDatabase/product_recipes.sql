@@ -1,8 +1,7 @@
 ﻿CREATE TABLE [dbo].[product_recipes]
 (
-	[RecipeId] INT NOT NULL , 
+	[RecipeId] INT NOT NULL PRIMARY KEY IDENTITY, 
     [ProductId] INT NOT NULL, 
-    [ProductRecipe] NCHAR(1500) NULL, 
-    PRIMARY KEY ([RecipeId]),
+    [ProductRecipe] NVARCHAR(1500) NOT NULL, 
     FOREIGN KEY ([ProductId]) REFERENCES dbo.products_table([ProductId])
 )

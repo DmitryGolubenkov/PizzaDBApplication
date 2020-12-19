@@ -1,0 +1,141 @@
+﻿@page "/Recipes"
+@using PizzaDataLibrary.BusinessLogic
+@using PizzaDataLibrary.Models
+@using Models
+@inject IProductRecipeData _db
+@inject IMenuProductData _dbMenu
+<h3>Таблица рецептов</h3>
+<p>На данной странице отображена таблица product_recipes из БД PizzaDB</p>
+
+@if (recipes == null)
+{
+    <p>
+        <em>Идёт загрузка данных..</em>
+    </p>
+}
+else
+{
+    @if (!_isSearching)
+    {
+<DxDataGrid Data="@recipes"
+            RowInsertingAsync="@OnRowInserting"
+            RowUpdatingAsync="@OnRowUpdating"
+            RowRemovingAsync="@OnRowRemoving"
+            EditMode="DataGridEditMode.PopupEditForm"
+            ShowFilterRow="true"
+            @ref="@_gridRef">
+    <DxDataGridColumn Field="@nameof(RecipeModel.RecipeId)" Caption="ID рецепта" EditorVisible=false></DxDataGridColumn>
+    <DxDataGridColumn Field="@nameof(RecipeModel.ProductId)" EditorVisible=false></DxDataGridColumn>
+    <DxDataGridComboBoxColumn Data="menuProductModels.Select(o => o.ProductName)" Field="@nameof(RecipeModel.ProductName)" Caption="Название"></DxDataGridComboBoxColumn>
+    <DxDataGridColumn Field="@nameof(RecipeModel.ProductRecipe)" Caption="Рецепт"></DxDataGridColumn>
+    <DxDataGridCommandColumn></DxDataGridCommandColumn>
+</DxDataGrid>
+    }
+    else
+    {
+    }
+}
+
+@code {
+    private List<RecipeModel> recipes;
+    private List<MenuProductModel> menuProductModels;
+    DxDataGrid<RecipeModel> _gridRef;
+    private bool _isSearching = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var newRecipes = new List<RecipeModel>();
+        var recipeModels = await _db.GetRecipesListTask();
+        menuProductModels = await _dbMenu.GetProductsList();
+        foreach (var databaseModel in recipeModels)
+        {
+            RecipeModel recipe = new RecipeModel();
+            recipe.RecipeId = databaseModel.RecipeId;
+            recipe.ProductId = databaseModel.ProductId;
+            recipe.ProductRecipe = databaseModel.ProductRecipe;
+            recipe.ProductName = menuProductModels.Find(o => o.ProductId == databaseModel.ProductId).ProductName;
+            newRecipes.Add(recipe);
+        }
+        recipes = newRecipes;
+    }
+
+    async Task OnRowRemoving(RecipeModel dataItem)
+    {
+        //Удаляем из БД
+        ProductRecipeModel model = new ProductRecipeModel();
+        model.RecipeId = dataItem.RecipeId;
+        model.ProductId = dataItem.ProductId;
+        model.ProductRecipe = dataItem.ProductRecipe;
+        await _db.Remove(model);
+        //Удаляем из листа
+        recipes.Remove(dataItem);
+        //Обновляем таблицу
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowUpdating(RecipeModel dataItem, IDictionary<string, object> newValue)
+    {
+        //Заполняем объект для отправки в БД
+        ProductRecipeModel model = new ProductRecipeModel();
+        model.RecipeId = dataItem.RecipeId;
+        model.ProductRecipe = dataItem.ProductRecipe;
+        model.ProductId = dataItem.ProductId;
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductRecipe":
+                    model.ProductRecipe = newValue["ProductRecipe"].ToString();
+                    recipes.Find(o => o.ProductId == dataItem.ProductId).ProductRecipe = newValue["ProductRecipe"].ToString();
+
+                    break;
+                case "ProductName":
+                    model.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+                    var recipeInList = recipes.FindIndex(o => o.ProductId == dataItem.ProductId);
+
+                    recipes[recipeInList].ProductId = model.ProductId;
+                    recipes[recipeInList].ProductName = menuProductModels.Find(o => o.ProductId == model.ProductId).ProductName;
+                    break;
+            }
+        }
+        //Отправляем его в БД
+        _db.Update(model);
+        await _gridRef.Refresh();
+    }
+
+    async Task OnRowInserting(IDictionary<string, object> newValue)
+    {
+        //Создаём новый объект и заполняем его
+        var newRecipe = new ProductRecipeModel();
+        foreach (var (key, val) in newValue)
+        {
+            switch (key)
+            {
+                case "ProductRecipe":
+                    newRecipe.ProductRecipe = newValue["ProductRecipe"].ToString();
+                    break;
+                case "ProductName":
+                    newRecipe.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+                    break;
+            }
+        }
+
+        //Добавляем его в БД и возвращаем id
+        int id = await _db.Add(newRecipe);
+        newRecipe.RecipeId = id;
+        //Добавляем его в лист
+        RecipeModel model = new RecipeModel();
+        model.RecipeId = newRecipe.RecipeId;
+        model.ProductRecipe = newRecipe.ProductRecipe;
+        model.ProductId = newRecipe.ProductId;
+        model.ProductName = menuProductModels.Find(o => o.ProductId == model.ProductId).ProductName;
+        recipes.Add(model);
+        //Обновляем отображение
+        await _gridRef.Refresh();
+    }
+
+    public async void Search() //здесь будут параметры поиска
+    {
+    }
+
+}

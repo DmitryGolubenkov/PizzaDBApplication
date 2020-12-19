@@ -1,8 +1,6 @@
 ﻿CREATE TABLE [dbo].[product_compositions]
 (
-	[CompositionId] INT NOT NULL , 
+	[CompositionId] INT NOT NULL PRIMARY KEY IDENTITY, 
     [ProductId] INT NOT NULL, 
-    [ProductComposition] NCHAR(500) NULL, 
-    PRIMARY KEY ([CompositionId]),
-    FOREIGN KEY ([ProductId]) REFERENCES dbo.products_table([ProductId])
+    [ProductComposition] NVARCHAR(500) NOT NULL
 )

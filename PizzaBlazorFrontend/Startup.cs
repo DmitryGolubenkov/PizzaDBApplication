@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using MySql.Data.MySqlClient;
 using PizzaDataLibrary.BusinessLogic;
 using PizzaDataLibrary.BusinessLogic.EmployeeDataLogic;
 using PizzaDataLibrary.DataAccess;
@@ -40,6 +39,7 @@ namespace PizzaBlazorFrontend
             services.AddTransient<IPartnerProductData, PartnerProductData>();
             services.AddTransient<IProductCompositionsData, ProductCompositionData>();
             services.AddTransient<IProductRecipeData, ProductRecipeData>();
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -78,6 +78,21 @@ namespace PizzaBlazorFrontend
                 endpoints.MapBlazorHub();
                 endpoints.MapFallbackToPage("/_Host");
             });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         }
     }
 }

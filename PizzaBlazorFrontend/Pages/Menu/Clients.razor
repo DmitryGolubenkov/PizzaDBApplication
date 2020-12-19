@@ -21,6 +21,7 @@ else
                     RowUpdating="@OnRowUpdating"
                     RowRemovingAsync="@OnRowRemoving"
                     EditMode="DataGridEditMode.PopupEditForm"
+                    ShowFilterRow="true"
                     @ref="@_gridRef">
             <DxDataGridColumn Field="@nameof(ClientModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
             <DxDataGridColumn Field="@nameof(ClientModel.Name)" Caption="Имя"></DxDataGridColumn>
