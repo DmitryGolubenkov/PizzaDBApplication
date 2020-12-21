@@ -13,7 +13,53 @@
 
 <h3>Таблица заказов</h3>
 <p>На данной странице отображена таблица orders из БД PizzaDB</p>
+<div class="border border-secondary p-3 mb-1 rounded">
+    <h5 class="mb-1">Поиск по сумме заказа</h5>
+    <EditForm Model="@search" OnSubmit="Search">
 
+        <InputSelect @bind-Value="search.priceSearchMode" class="form-control mb-2">
+            <option value="@SearchMode.MoreThan">Больше</option>
+            <option value="@SearchMode.MoreThanOrEqual">Больше или равно</option>
+            <option value="@SearchMode.LessThan">Меньше</option>
+            <option value="@SearchMode.LessThanOrEqual">Меньше или равно</option>
+            <option value="@SearchMode.Equal">Равно</option>
+            <option value="@SearchMode.No" selected>Не искать</option>
+        </InputSelect>
+        @if (search.priceSearchMode != SearchMode.No)
+        {
+            <InputNumber @bind-Value=search.Sum required="false" class="form-control mb-2">Цена</InputNumber>
+        }
+
+        <h5 class="mb-1">Поиск по дате</h5>
+        <InputSelect @bind-Value="search.DateTimeSearchMode" class="form-control mb-2">
+            <option value="@DateSearchMode.EarlierThan">Ранее, чем</option>
+            <option value="@DateSearchMode.AfterThan">После</option>
+            <option value="@DateSearchMode.Between">Промежуток</option>
+            <option value="@DateSearchMode.No" selected>Не искать</option>
+        </InputSelect>
+        @if (search.DateTimeSearchMode != DateSearchMode.No)
+        {
+            if (search.DateTimeSearchMode != DateSearchMode.Between)
+            {
+                <InputDate @bind-Value=search.MinDateTime class="form-control mb-2">Дата</InputDate>
+            }
+            else
+            {
+                <InputDate @bind-Value=search.MinDateTime class="form-control mb-2">Начальная дата</InputDate>
+                <InputDate @bind-Value=search.MaxDateTime class="form-control mb-2">Последняя дата</InputDate>
+            }
+        }
+
+        @if (search.priceSearchMode != SearchMode.No || search.DateTimeSearchMode != DateSearchMode.No)
+        {
+            <div class="row m-2">
+                <button @onclick="Search" class="btn btn-info btn-blue-background m-1 btn-border-radius">Поиск</button>
+                <button @onclick="ClearSearch" class="btn btn-secondary m-1 btn-border-radius">Очистить</button>
+            </div>
+        }
+    </EditForm>
+</div>
+<h5 class="mb-1">Таблица</h5>
 @if (orders == null)
 {
     <p><em>Идёт загрузка данных..</em></p>
@@ -22,6 +68,9 @@ else
 {
     @if (!_isSearching)
     {
+
+
+
 <DxDataGrid Data="@orders"
             RowInsertingAsync="@OnRowInserting"
             RowUpdatingAsync="@OnRowUpdating"
@@ -46,11 +95,70 @@ else
     }
     else
     {
+        <DxDataGrid Data="@searchedModels"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdatingAsync="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    InitNewRow="@OnInitNewRow"
+                    ShowFilterRow="true"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderId)" Caption="ID заказа" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(OrderDisplayModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="@clients.Select(o => o.Name).ToList()" Field="@nameof(OrderDisplayModel.ClientName)" Caption="Имя клиента"></DxDataGridComboBoxColumn>
 
+            <DxDataGridSpinEditColumn Field="@nameof(OrderDisplayModel.Sum)" Caption="Сумма"></DxDataGridSpinEditColumn>
+            <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderTime)" Caption="Время заказа"></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="@orderStatuses" Field="@nameof(OrderDisplayModel.StatusName)" Caption="Статус заказа"></DxDataGridComboBoxColumn>
+    
+            <DxDataGridColumn Field="@nameof(OrderDisplayModel.OrderContents)" Caption="Состав заказа"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(OrderDisplayModel.EmployeeId)" Caption="ID сотрудника" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="@avaliableEmployees" Field="@nameof(OrderDisplayModel.EmployeeName)" Caption="Сотрудник"></DxDataGridComboBoxColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
     }
 }
 @code {
+
+
+    SearchModel search = new SearchModel();
+
+    class SearchModel
+    {
+        public int Sum { get; set; }
+        public SearchMode priceSearchMode { get; set; }
+        public DateTime MinDateTime { get; set; }
+        public DateTime MaxDateTime { get; set; }
+        public DateSearchMode DateTimeSearchMode { get; set; }
+
+        public SearchModel()
+        {
+            DateTimeSearchMode = DateSearchMode.No;
+            priceSearchMode = SearchMode.No;
+            MinDateTime = DateTime.Now;
+            MaxDateTime = DateTime.Now;
+        }
+    }
+
+    enum SearchMode
+    {
+        MoreThan,
+        MoreThanOrEqual,
+        LessThan,
+        LessThanOrEqual,
+        Equal,
+        No
+    }
+
+    enum DateSearchMode
+    {
+        EarlierThan,
+        AfterThan,
+        Between,
+        No
+    }
     private List<OrderDisplayModel> orders;
+    private List<OrderDisplayModel> searchedModels;
     private List<ClientModel> clients;
     private List<EmployeeModel> employees;
     private List<string> avaliableEmployees;
@@ -60,6 +168,8 @@ else
     private string[] orderStatuses = {"Поступил", "В процессе", "Доставляется", "Завершен"};
     protected override async Task OnInitializedAsync()
     {
+        search.MinDateTime = DateTime.Now;
+        search.MaxDateTime = DateTime.Now;
         var databaseOrders = await _db.GetOrdersListTask();
         clients = await _ClientDataDB.GetClientsListTask();
         employees = await _EmployeeDataDB.GetEmployeesListTask();
@@ -79,10 +189,15 @@ else
             model.StatusId = orderModel.StatusId;
             model.StatusName = orderStatuses[orderModel.StatusId];
             var employee = employees.Find(o => o.EmployeeId == orderModel.EmployeeId);
-            avaliableEmployees.Add($@"{employee.LastName} {employee.FirstName} {employee.MiddleName}");
+            //avaliableEmployees.Add($@"{employee.LastName} {employee.FirstName} {employee.MiddleName}");
             model.EmployeeName = $@"{employee.LastName} {employee.FirstName} {employee.MiddleName}";
 
             orderDisplayModels.Add(model);
+        }
+
+        foreach (var employee in employees)
+        {
+            avaliableEmployees.Add($@"{employee.LastName} {employee.FirstName} {employee.MiddleName}");
         }
         orders = orderDisplayModels;
     }
@@ -182,10 +297,10 @@ else
                     string firstName = fullName.Split(' ')[1];
                     string middleName = fullName.Split(' ')[2];
                     newOrder.EmployeeId = employees.Find(
-                        o => Trim(o.FirstName) == Trim(firstName) 
-                             && 
-                             Trim(o.LastName) == Trim(lastName) 
-                             && 
+                        o => Trim(o.FirstName) == Trim(firstName)
+                             &&
+                             Trim(o.LastName) == Trim(lastName)
+                             &&
                              Trim(o.MiddleName) == Trim(middleName)).EmployeeId;
                     newDisplayOrder.EmployeeName = fullName;
                     break;
@@ -203,8 +318,17 @@ else
                     }
                     break;
                 case "OrderTime":
-                    newOrder.OrderTime = (DateTime)newValue["OrderTime"];
-                    newDisplayOrder.OrderTime = (DateTime)newValue["OrderTime"];
+                    try
+                    {
+                        DateTime converted = Convert.ToDateTime(newValue["OrderTime"]);
+
+                        newOrder.OrderTime = converted;
+                        newDisplayOrder.OrderTime = converted;
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine("Error when converting DateTime");
+                    }
                     break;
                 case "StatusName":
                     newOrder.StatusId = orderStatuses.FindIndex(o => o == newValue["StatusName"].ToString());
@@ -232,11 +356,52 @@ else
         return Task.CompletedTask;
     }
 
-    public async void Search()//здесь будут параметры поиска
+    public async void Search() //здесь будут параметры поиска
     {
+        _isSearching = true;
+        var resultCollection = orders;
+        if(search.Sum != 0)
+            switch (search.priceSearchMode)
+            {
+                case SearchMode.Equal:
+                    resultCollection = resultCollection.FindAll(o => o.Sum == search.Sum);
+                    break;
+                case SearchMode.LessThan:
+                    resultCollection = resultCollection.FindAll(o => o.Sum < search.Sum);
+                    break;
+                case SearchMode.MoreThan:
+                    resultCollection = resultCollection.FindAll(o => o.Sum > search.Sum);
+                    break;
+                case SearchMode.MoreThanOrEqual:
+                    resultCollection = resultCollection.FindAll(o => o.Sum >= search.Sum);
+                    break;
+                case SearchMode.LessThanOrEqual:
+                    resultCollection = resultCollection.FindAll(o => o.Sum <= search.Sum);
+                    break;
+            }
 
+        switch (search.DateTimeSearchMode)
+        {
+
+            case DateSearchMode.AfterThan:
+                resultCollection = resultCollection.FindAll(o => o.OrderTime >= search.MinDateTime);
+                break;
+            case DateSearchMode.EarlierThan:
+                resultCollection = resultCollection.FindAll(o => o.OrderTime <= search.MinDateTime);
+                break;
+            case DateSearchMode.Between:
+                resultCollection = resultCollection.FindAll(o => o.OrderTime >= search.MinDateTime && o.OrderTime <= search.MaxDateTime);
+                break;
+        }
+
+        searchedModels = resultCollection;
     }
 
+    void ClearSearch()
+    {
+        search = new SearchModel();
+        _isSearching = false;
+    }
 
 
 

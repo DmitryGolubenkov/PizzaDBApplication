@@ -10,31 +10,28 @@
 
 @if (clients == null)
 {
-    <p><em>Идёт загрузка данных..</em></p>
+    <p>
+        <em>Идёт загрузка данных..</em>
+    </p>
 }
 else
 {
-    @if (!_isSearching)
-    {
-        <DxDataGrid Data="@clients"
-                    RowInsertingAsync="@OnRowInserting"
-                    RowUpdating="@OnRowUpdating"
-                    RowRemovingAsync="@OnRowRemoving"
-                    EditMode="DataGridEditMode.PopupEditForm"
-                    ShowFilterRow="true"
-                    @ref="@_gridRef">
-            <DxDataGridColumn Field="@nameof(ClientModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
-            <DxDataGridColumn Field="@nameof(ClientModel.Name)" Caption="Имя"></DxDataGridColumn>
-            <DxDataGridColumn Field="@nameof(ClientModel.Address)" Caption="Адрес"></DxDataGridColumn>
-            <DxDataGridColumn Field="@nameof(ClientModel.PhoneNumber)" Caption="Номер телефона"></DxDataGridColumn>
-            <DxDataGridCommandColumn></DxDataGridCommandColumn>
-        </DxDataGrid>
-    }
-    else
-    {
-
-    }
+    
+    <DxDataGrid Data="@clients"
+                RowInsertingAsync="@OnRowInserting"
+                RowUpdating="@OnRowUpdating"
+                RowRemovingAsync="@OnRowRemoving"
+                EditMode="DataGridEditMode.PopupEditForm"
+                ShowFilterRow="true"
+                @ref="@_gridRef">
+        <DxDataGridColumn Field="@nameof(ClientModel.ClientId)" Caption="ID клиента" EditorVisible=false></DxDataGridColumn>
+        <DxDataGridColumn Field="@nameof(ClientModel.Name)" Caption="Имя"></DxDataGridColumn>
+        <DxDataGridColumn Field="@nameof(ClientModel.Address)" Caption="Адрес"></DxDataGridColumn>
+        <DxDataGridColumn Field="@nameof(ClientModel.PhoneNumber)" Caption="Номер телефона"></DxDataGridColumn>
+        <DxDataGridCommandColumn></DxDataGridCommandColumn>
+    </DxDataGrid>
 }
+
 @code {
     private List<ClientModel> clients;
     DxDataGrid<ClientModel> _gridRef;
@@ -47,18 +44,17 @@ else
 
     async Task OnRowRemoving(ClientModel dataItem)
     {
-
-        //Удаляем из БД
+    //Удаляем из БД
         await _db.RemoveClient(dataItem);
-        //Удаляем из листа
+    //Удаляем из листа
         clients.Remove(dataItem);
-        //Обновляем таблицу
+    //Обновляем таблицу
         await _gridRef.Refresh();
     }
 
     void OnRowUpdating(ClientModel dataItem, IDictionary<string, object> newValue)
     {
-        //Заполняем объект для отправки в БД
+    //Заполняем объект для отправки в БД
         foreach (var (key, val) in newValue)
         {
             switch (key)
@@ -72,16 +68,15 @@ else
                 case "PhoneNumber":
                     dataItem.PhoneNumber = newValue["PhoneNumber"].ToString();
                     break;
-
             }
         }
-        //Отправляем его в БД
+    //Отправляем его в БД
         _db.UpdateClient(dataItem);
     }
 
     async Task OnRowInserting(IDictionary<string, object> newValue)
     {
-        //Создаём новый объект и заполняем его
+    //Создаём новый объект и заполняем его
         var newClient = new ClientModel();
         foreach (var (key, val) in newValue)
         {
@@ -96,21 +91,15 @@ else
                 case "PhoneNumber":
                     newClient.PhoneNumber = newValue["PhoneNumber"].ToString();
                     break;
-
             }
         }
 
-        //Добавляем его в БД и возвращаем id
+    //Добавляем его в БД и возвращаем id
         int id = await _db.AddClient(newClient);
         newClient.ClientId = id;
-        //Добавляем его в лист
+    //Добавляем его в лист
         clients.Add(newClient);
-        //Обновляем отображение
+    //Обновляем отображение
         await _gridRef.Refresh();
-    }
-
-    public async void Search()//здесь будут параметры поиска
-    {
-
     }
 }

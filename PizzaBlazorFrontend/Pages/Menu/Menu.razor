@@ -9,34 +9,84 @@
 
 @if (products == null)
 {
-    <p><em>Идёт загрузка данных..</em></p>
+    <p>
+        <em>Идёт загрузка данных..</em>
+    </p>
 }
 else
 {
+<div class="border-dark s">
+    <h5 class="m-1">Поиск по цене</h5>
+    <EditForm Model="@search" OnSubmit="Search">
+        <InputNumber @bind-Value=search.Price required="false">Цена</InputNumber>
+        <InputSelect @bind-Value="search.priceSearchMode">
+            <option value="@SearchMode.MoreThan">Больше</option>
+            <option value="@SearchMode.MoreThanOrEqual">Больше или равно</option>
+            <option value="@SearchMode.LessThan">Меньше</option>
+            <option value="@SearchMode.LessThanOrEqual">Меньше или равно</option>
+            <option value="@SearchMode.Equal">Равно</option>
+        </InputSelect>
+        <button @onclick="Search" class="btn btn-info btn-blue-background m-1 btn-border-radius">Поиск</button>
+        <button @onclick="ClearSearch" class="btn btn-secondary m-1 btn-border-radius">Очистить</button>
+    </EditForm>
+</div>
+    <h5>Таблица</h5>
     @if (!_isSearching)
     {
-<DxDataGrid Data="@products"
-            RowInsertingAsync="@OnRowInserting"
-            RowUpdating="@OnRowUpdating"
-            RowRemovingAsync="@OnRowRemoving"
-            EditMode="DataGridEditMode.PopupEditForm"
-            ShowFilterRow="true"
-            @ref="@_gridRef">
-    <DxDataGridColumn Field="@nameof(MenuProductModel.ProductId)" Caption="Id продукта" EditorVisible=false></DxDataGridColumn>
-    <DxDataGridColumn Field="@nameof(MenuProductModel.ProductName)" Caption="Название продукта"></DxDataGridColumn>
-    <DxDataGridSpinEditColumn Field="@nameof(MenuProductModel.ProductPrice)" Caption="Цена"></DxDataGridSpinEditColumn>
-    <DxDataGridColumn Field="@nameof(MenuProductModel.ProductDescription)" Caption="Описание"></DxDataGridColumn>
-    <DxDataGridColumn Field="@nameof(MenuProductModel.ProductMarks)" Caption="Пометки"></DxDataGridColumn>
-    <DxDataGridCommandColumn></DxDataGridCommandColumn>
-</DxDataGrid>
+
+        <DxDataGrid Data="@products"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdating="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    ShowFilterRow="true"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductId)" Caption="Id продукта" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductName)" Caption="Название продукта"></DxDataGridColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(MenuProductModel.ProductPrice)" Caption="Цена"></DxDataGridSpinEditColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductDescription)" Caption="Описание"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductMarks)" Caption="Пометки"></DxDataGridColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
     }
     else
     {
-        
+        <DxDataGrid Data="@searchedProducts"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdating="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    ShowFilterRow="true"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductId)" Caption="Id продукта" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductName)" Caption="Название продукта"></DxDataGridColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(MenuProductModel.ProductPrice)" Caption="Цена"></DxDataGridSpinEditColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductDescription)" Caption="Описание"></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(MenuProductModel.ProductMarks)" Caption="Пометки"></DxDataGridColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
     }
 }
 @code {
+    SearchModel search = new SearchModel();
+
+    class SearchModel
+    {
+        public int Price { get; set; }
+        public SearchMode priceSearchMode { get; set; }
+    }
+
+    enum SearchMode
+    {
+        MoreThan,
+        MoreThanOrEqual,
+        LessThan,
+        LessThanOrEqual,
+        Equal
+    }
+
     private List<MenuProductModel> products;
+    private List<MenuProductModel> searchedProducts;
     DxDataGrid<MenuProductModel> _gridRef;
     private bool _isSearching = false;
 
@@ -47,12 +97,11 @@ else
 
     async Task OnRowRemoving(MenuProductModel dataItem)
     {
-
-    //Удаляем из БД 
+        //Удаляем из БД
         await _db.RemoveProduct(dataItem);
-    //Удаляем из листа
+        //Удаляем из листа
         products.Remove(dataItem);
-    //Обновляем таблицу
+        //Обновляем таблицу
         await _gridRef.Refresh();
     }
 
@@ -67,7 +116,7 @@ else
                     dataItem.ProductName = newValue["ProductName"].ToString();
                     break;
                 case "ProductPrice":
-                    dataItem.ProductPrice = (float) newValue["ProductPrice"];
+                    dataItem.ProductPrice = (float)newValue["ProductPrice"];
                     break;
                 case "ProductDescription":
                     dataItem.ProductDescription = newValue["ProductDescription"].ToString();
@@ -75,7 +124,6 @@ else
                 case "ProductMarks":
                     dataItem.ProductMarks = newValue["ProductMarks"].ToString();
                     break;
-
             }
         }
         //Отправляем его в БД
@@ -102,21 +150,46 @@ else
                 case "ProductMarks":
                     newProduct.ProductMarks = newValue["ProductMarks"].ToString();
                     break;
-
             }
         }
-        
+
         //Добавляем его в БД и возвращаем id
         int id = await _db.AddProduct(newProduct);
         newProduct.ProductId = id;
-    //Добавляем его в лист
+        //Добавляем его в лист
         products.Add(newProduct);
         //Обновляем отображение
         await _gridRef.Refresh();
     }
 
-    public async void Search()//здесь будут параметры поиска
+    public async void Search() //здесь будут параметры поиска
     {
-        
+        _isSearching = true;
+
+        switch (search.priceSearchMode)
+        {
+            case SearchMode.Equal:
+                searchedProducts = products.FindAll(o => o.ProductPrice == search.Price);
+                break;
+            case SearchMode.LessThan:
+                searchedProducts = products.FindAll(o => o.ProductPrice < search.Price);
+                break;
+            case SearchMode.MoreThan:
+                searchedProducts = products.FindAll(o => o.ProductPrice > search.Price);
+                break;
+            case SearchMode.MoreThanOrEqual:
+                searchedProducts = products.FindAll(o => o.ProductPrice >= search.Price);
+                break;
+            case SearchMode.LessThanOrEqual:
+                searchedProducts = products.FindAll(o => o.ProductPrice <= search.Price);
+                break;
+        }
     }
+
+    void ClearSearch()
+    {
+        search = new SearchModel();
+        _isSearching = false;
+    }
+
 }

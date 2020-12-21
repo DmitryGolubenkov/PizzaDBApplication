@@ -47,10 +47,21 @@ app {
 }
 
 .sidebar {
-    background-color: #0d4712;
+    background-color: #06406F;
     box-shadow: 0 0 10px rgba(0,0,0,0.5);
 }
-
+.btn-blue-background {
+    background-color: #08599c;
+    border: 1px solid #08599c;
+    
+}
+.btn-border-radius {
+    border-radius: 12px;
+}
+    .btn-blue-background:hover {
+        background-color: #2881cc;
+        border: 1px solid #2881cc;
+    }
     .sidebar .top-row {
         background-color: rgba(0,0,0,0.4);
     }

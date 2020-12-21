@@ -15,8 +15,6 @@
 }
 else
 {
-    @if (!_isSearching)
-    {
 <DxDataGrid Data="@recipes"
             RowInsertingAsync="@OnRowInserting"
             RowUpdatingAsync="@OnRowUpdating"
@@ -31,10 +29,6 @@ else
     <DxDataGridCommandColumn></DxDataGridCommandColumn>
 </DxDataGrid>
     }
-    else
-    {
-    }
-}
 
 @code {
     private List<RecipeModel> recipes;

@@ -1,13 +1,28 @@
 ﻿@page "/PartnerProducts"
 @using PizzaDataLibrary.BusinessLogic
 @using PizzaDataLibrary.Models
+@using PizzaBlazorFrontend.Models
 
 @inject IPartnerProductData _db
 @inject IMenuProductData _dbMenu
 
 <h3>Таблица продуктов партнеров</h3>
 <p>На данной странице отображена таблица partner_products из БД PizzaDB</p>
-
+<div class="border-dark s">
+    <h5 class="m-1">Поиск по цене</h5>
+    <EditForm Model="@search" OnSubmit="Search">
+        <InputNumber @bind-Value=search.Price required="false">Цена</InputNumber>
+        <InputSelect @bind-Value="search.priceSearchMode">
+            <option value="@SearchMode.MoreThan">Больше</option>
+            <option value="@SearchMode.MoreThanOrEqual">Больше или равно</option>
+            <option value="@SearchMode.LessThan">Меньше</option>
+            <option value="@SearchMode.LessThanOrEqual">Меньше или равно</option>
+            <option value="@SearchMode.Equal">Равно</option>
+        </InputSelect>
+        <button @onclick="Search" class="btn btn-info btn-blue-background m-1 btn-border-radius">Поиск</button>
+        <button @onclick="ClearSearch" class="btn btn-secondary m-1 btn-border-radius">Очистить</button>
+    </EditForm>
+</div>
 @if (products == null)
 {
     <p><em>Идёт загрузка данных..</em></p>
@@ -18,84 +33,152 @@ else
     {
         <DxDataGrid Data="@products"
                     RowInsertingAsync="@OnRowInserting"
-                    RowUpdating="@OnRowUpdating"
+                    RowUpdatingAsync="@OnRowUpdating"
                     RowRemovingAsync="@OnRowRemoving"
                     EditMode="DataGridEditMode.PopupEditForm"
                     ShowFilterRow="true"
                     @ref="@_gridRef">
-            <DxDataGridColumn Field="@nameof(PartnerProductModel.PartnerProductId)" Caption="ID продукта партнера" EditorVisible=false></DxDataGridColumn>
-            <DxDataGridComboBoxColumn Data="menuProductModels.Select(o =>o.ProductName)" Field="@nameof(PartnerProductModel.ProductId)" Caption="ID продукта в меню"></DxDataGridComboBoxColumn>
-            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductModel.ProductPartnerPrice)" Caption="Цена закупки"></DxDataGridSpinEditColumn>
-            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductModel.ProductCount)" Caption="Количество в наличии"></DxDataGridSpinEditColumn>
+            <DxDataGridColumn Field="@nameof(PartnerProductViewModel.PartnerProductId)" Caption="ID продукта партнера" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(PartnerProductViewModel.ProductId)" Caption="ID продукта в меню" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="menuProductModels.Select(o =>o.ProductName)" Field="@nameof(PartnerProductViewModel.ProductName)" Caption="Название продукта"></DxDataGridComboBoxColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductViewModel.ProductPartnerPrice)" Caption="Цена закупки"></DxDataGridSpinEditColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductViewModel.ProductCount)" Caption="Количество в наличии"></DxDataGridSpinEditColumn>
             <DxDataGridCommandColumn></DxDataGridCommandColumn>
         </DxDataGrid>
     }
     else
     {
-
+        <DxDataGrid Data="@searchedModels"
+                    RowInsertingAsync="@OnRowInserting"
+                    RowUpdatingAsync="@OnRowUpdating"
+                    RowRemovingAsync="@OnRowRemoving"
+                    EditMode="DataGridEditMode.PopupEditForm"
+                    ShowFilterRow="true"
+                    @ref="@_gridRef">
+            <DxDataGridColumn Field="@nameof(PartnerProductViewModel.PartnerProductId)" Caption="ID продукта партнера" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridColumn Field="@nameof(PartnerProductViewModel.ProductId)" Caption="ID продукта в меню" EditorVisible=false></DxDataGridColumn>
+            <DxDataGridComboBoxColumn Data="menuProductModels.Select(o =>o.ProductName)" Field="@nameof(PartnerProductViewModel.ProductName)" Caption="Название продукта"></DxDataGridComboBoxColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductViewModel.ProductPartnerPrice)" Caption="Цена закупки"></DxDataGridSpinEditColumn>
+            <DxDataGridSpinEditColumn Field="@nameof(PartnerProductViewModel.ProductCount)" Caption="Количество в наличии"></DxDataGridSpinEditColumn>
+            <DxDataGridCommandColumn></DxDataGridCommandColumn>
+        </DxDataGrid>
     }
 }
 @code {
-    private List<PartnerProductModel> products;
+
+    SearchModel search = new SearchModel();
+
+    class SearchModel
+    {
+        public int Price { get; set; }
+        public SearchMode priceSearchMode { get; set; }
+    }
+
+    enum SearchMode
+    {
+        MoreThan,
+        MoreThanOrEqual,
+        LessThan,
+        LessThanOrEqual,
+        Equal
+    }
+
+
+    private List<PartnerProductViewModel> products;
+    private List<PartnerProductViewModel> searchedModels;
     private List<MenuProductModel> menuProductModels;
-    DxDataGrid<PartnerProductModel> _gridRef;
+    DxDataGrid<PartnerProductViewModel> _gridRef;
     private bool _isSearching = false;
 
     protected override async Task OnInitializedAsync()
     {
-        products = await _db.GetPartnerProductListTask();
+        var databaseProducts = await _db.GetPartnerProductListTask();
         menuProductModels = await _dbMenu.GetProductsList();
+
+        var listToDisplay = new List<PartnerProductViewModel>();
+        foreach (var product in databaseProducts)
+        {
+            PartnerProductViewModel model = new PartnerProductViewModel();
+            model.PartnerProductId = product.PartnerProductId;
+            model.ProductId = product.ProductId;
+            model.ProductCount = product.ProductCount;
+            model.ProductPartnerPrice = product.ProductPartnerPrice;
+            model.ProductName = menuProductModels.Find(o => o.ProductId == model.ProductId).ProductName;
+
+            listToDisplay.Add(model);
+        }
+
+        products = listToDisplay;
     }
 
-    async Task OnRowRemoving(PartnerProductModel dataItem)
+    async Task OnRowRemoving(PartnerProductViewModel dataItem)
     {
+        PartnerProductModel model = new PartnerProductModel();
+        model.PartnerProductId = dataItem.PartnerProductId;
 
         //Удаляем из БД
-        await _db.Remove(dataItem);
+        await _db.Remove(model);
         //Удаляем из листа
         products.Remove(dataItem);
         //Обновляем таблицу
         await _gridRef.Refresh();
     }
 
-    void OnRowUpdating(PartnerProductModel dataItem, IDictionary<string, object> newValue)
+    async Task OnRowUpdating(PartnerProductViewModel dataItem, IDictionary<string, object> newValue)
     {
+        var partnerProduct = new PartnerProductModel();
+        partnerProduct.PartnerProductId = dataItem.PartnerProductId;
+        partnerProduct.ProductId = dataItem.ProductId;
+        partnerProduct.ProductCount = dataItem.ProductCount;
+        partnerProduct.ProductPartnerPrice = dataItem.ProductPartnerPrice;
         //Заполняем объект для отправки в БД
         foreach (var (key, val) in newValue)
         {
             switch (key)
             {
-                case "ProductId":
-                    dataItem.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductId"].ToString()).ProductId;
+                case "ProductName":
+                    int productId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+                    partnerProduct.ProductId = productId;
+                    dataItem.ProductId = productId;
+                    dataItem.ProductName = newValue["ProductName"].ToString();
                     break;
                 case "ProductCount":
+                    partnerProduct.ProductCount = (int)newValue["ProductCount"];
                     dataItem.ProductCount = (int)newValue["ProductCount"];
                     break;
                 case "ProductPartnerPrice":
+                    partnerProduct.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
                     dataItem.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
                     break;
+
             }
         }
         //Отправляем его в БД
-        _db.Update(dataItem);
+        _db.Update(partnerProduct);
     }
 
     async Task OnRowInserting(IDictionary<string, object> newValue)
     {
         //Создаём новый объект и заполняем его
         var newPartnerProduct = new PartnerProductModel();
+        var newDisplayPartnerProduct = new PartnerProductViewModel();
         foreach (var (key, val) in newValue)
         {
             switch (key)
             {
-                case "ProductId":
-                    newPartnerProduct.ProductId = menuProductModels.Find(o => o.ProductName == newValue["ProductId"].ToString()).ProductId;
+                case "ProductName":
+                    int productId = menuProductModels.Find(o => o.ProductName == newValue["ProductName"].ToString()).ProductId;
+                    newPartnerProduct.ProductId = productId;
+                    newDisplayPartnerProduct.ProductId = productId;
+                    newDisplayPartnerProduct.ProductName = newValue["ProductName"].ToString();
                     break;
                 case "ProductCount":
                     newPartnerProduct.ProductCount = (int)newValue["ProductCount"];
+                    newDisplayPartnerProduct.ProductCount = (int)newValue["ProductCount"];
                     break;
                 case "ProductPartnerPrice":
                     newPartnerProduct.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
+                    newDisplayPartnerProduct.ProductPartnerPrice = (int)newValue["ProductPartnerPrice"];
                     break;
 
             }
@@ -103,15 +186,41 @@ else
 
         //Добавляем его в БД и возвращаем id
         int id = await _db.Add(newPartnerProduct);
-        newPartnerProduct.PartnerProductId = id;
+        newDisplayPartnerProduct.PartnerProductId = id;
         //Добавляем его в лист
-        products.Add(newPartnerProduct);
+
+        products.Add(newDisplayPartnerProduct);
         //Обновляем отображение
         await _gridRef.Refresh();
     }
 
-    public async void Search()//здесь будут параметры поиска
+    public async void Search() //здесь будут параметры поиска
     {
+        _isSearching = true;
 
+        switch (search.priceSearchMode)
+        {
+            case SearchMode.Equal:
+                searchedModels = products.FindAll(o => o.ProductPartnerPrice == search.Price);
+                break;
+            case SearchMode.LessThan:
+                searchedModels = products.FindAll(o => o.ProductPartnerPrice < search.Price);
+                break;
+            case SearchMode.MoreThan:
+                searchedModels = products.FindAll(o => o.ProductPartnerPrice > search.Price);
+                break;
+            case SearchMode.MoreThanOrEqual:
+                searchedModels = products.FindAll(o => o.ProductPartnerPrice >= search.Price);
+                break;
+            case SearchMode.LessThanOrEqual:
+                searchedModels = products.FindAll(o => o.ProductPartnerPrice <= search.Price);
+                break;
+        }
+    }
+
+    void ClearSearch()
+    {
+        search = new SearchModel();
+        _isSearching = false;
     }
 }
