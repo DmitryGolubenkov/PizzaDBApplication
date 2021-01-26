@@ -64,3 +64,5 @@
 
 *.html linguist-detectable=false
 *.htm linguist-detectable=false
+*.cshtml linguist-detectable=false
+*.razor linguist-detectable=false
